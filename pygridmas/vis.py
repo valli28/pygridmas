@@ -21,6 +21,11 @@ class VisualizerBase(pyglet.window.Window):
             x=self.world.w * 0.5 * self.scale, y=self.world.h * 0.5 * self.scale,
             anchor_x="center", anchor_y="center"
         )
+        self.time_label = pyglet.text.Label(
+            'time: 0', font_size=10, x=2, y=14,
+            anchor_x='left', anchor_y='bottom'
+        )
+        self.labels.append(self.time_label)
         # force draw first draw
         self.force_draw()
 
@@ -46,7 +51,7 @@ class VisualizerBase(pyglet.window.Window):
                         xx *= s
                         if agents:
                             positions += [xx, yy, xx + s, yy, xx + s, yy + s, xx, yy + s]
-                            colors += list(agents[0].color) * 4
+                            colors += list(agents[-1].color) * 4
             else:
                 for y, row in enumerate(self.world.m):
                     yy = y * self.scale
@@ -68,6 +73,7 @@ class VisualizerBase(pyglet.window.Window):
                 ('v2f', positions),
                 ('c3f', colors)
             )
+        self.time_label.text = 'time: {}'.format(self.world.time)
         if self.render_labels:
             for label in self.labels:
                 label.draw()
@@ -96,7 +102,7 @@ class Visualizer(VisualizerBase):
             anchor_x='left', anchor_y='bottom'
         )
         self.performance_label = pyglet.text.Label(
-            '', font_size=10, x=2, y=14,
+            '', font_size=10, x=2, y=28,
             anchor_x='left', anchor_y='bottom'
         )
         self.labels += [self.speed_label, self.performance_label]

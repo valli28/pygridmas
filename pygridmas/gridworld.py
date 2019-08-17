@@ -2,7 +2,8 @@ import itertools
 from pygridmas.vec2d import Vec2D
 import pygridmas.colors as Colors
 import random
-from typing import List
+from typing import List, Union
+import math
 
 
 class World:
@@ -31,11 +32,12 @@ class World:
             if agent_id in self.agents:
                 self.agents[agent_id].step()
         # emit events after agent steps
-        for agents, emit_pos, data in self.event_emit_queue:
+        events = self.event_emit_queue
+        self.event_emit_queue = []
+        for agents, event_type, data in events:
             for agent in agents:
                 if agent.idx in self.agents:
-                    agent.receive_event(emit_pos, data)
-        self.event_emit_queue.clear()
+                    agent.receive_event(event_type, data)
         self.time += 1
 
     def cleanup(self):
@@ -174,11 +176,11 @@ class World:
             for x in xrange:
                 agents += m[_ylo][x] + m[_yhi][x]
 
-            yrange = range(ylo, yhi + 1)
+            yrange = range(ylo + 1, yhi)
             if ylo != _ylo:
-                yrange = itertools.chain(range(_ylo, self.h), range(yhi + 1))
+                yrange = itertools.chain(range(_ylo + 1, self.h), range(yhi))
             elif yhi != _yhi:
-                yrange = itertools.chain(range(ylo, self.h), range(_yhi + 1))
+                yrange = itertools.chain(range(ylo + 1, self.h), range(_yhi))
             for y in yrange:
                 agents += m[y][_xlo] + m[y][_xhi]
         return agents
@@ -213,8 +215,8 @@ class World:
                 dy = dy - self.h if dy > 0 else dy + self.h
         return Vec2D(dx, dy)
 
-    def emit_event(self, agents, emit_pos, data):
-        self.event_emit_queue.append((agents, emit_pos, data))
+    def emit_event(self, agents, event_type, data=None):
+        self.event_emit_queue.append((agents, event_type, data))
 
 
 class Agent:
@@ -237,7 +239,7 @@ class Agent:
     def step(self):
         pass
 
-    def receive_event(self, emitter_pos: Vec2D, data):
+    def receive_event(self, event_type, data):
         pass
 
     def cleanup(self):
@@ -253,20 +255,25 @@ class Agent:
     def move_rel(self, rel_pos) -> bool:
         return self.world.move_agent_relative(self.idx, rel_pos)
 
-    def move_in_dir(self, dir: Vec2D):
-        sign = dir.clamp_rng(1)
-        xabs, yabs = abs(dir.x), abs(dir.y)
-        mi, ma = xabs, yabs
-        x_is_max = xabs > yabs
-        if x_is_max: mi, ma = ma, mi
+    def move_in_dir(self, dir: Union[Vec2D, float]):
+        if type(dir) == Vec2D:
+            if dir.is_zero_vec():
+                return self.move_rel(dir)
+            dir = dir.angle()
+        c, s = math.cos(dir), math.sin(dir)
+        cabs, sabs = abs(c), abs(s)
+        mi, ma = cabs, sabs
+        c_is_max = cabs > sabs
+        if c_is_max: mi, ma = ma, mi
         min_p = mi / ma if ma > 0 else 0
         move_min = random.random() < min_p
+        dx, dy = -1 if c < 0 else 1, -1 if s < 0 else 1
         if not move_min:
-            if x_is_max:
-                sign.y = 0
+            if c_is_max:
+                dy = 0
             else:
-                sign.x = 0
-        return self.move_rel(sign)
+                dx = 0
+        return self.move_rel(Vec2D(dx, dy))
 
     def move_towards(self, pos: Vec2D):
         dir = self.world.shortest_way(self.pos(), pos)
@@ -286,9 +293,9 @@ class Agent:
             agents.remove(self)
         return agents
 
-    def emit_event(self, rng, data, group_id=None):
+    def emit_event(self, rng, event_type, data=None, group_id=None):
         agents = self.box_scan(rng, group_id, sort=False)
-        self.world.emit_event(agents, self.pos(), data)
+        self.world.emit_event(agents, event_type, data)
 
     def activate(self):
         self.world.active_agents[self.idx] = self
@@ -297,7 +304,7 @@ class Agent:
         self.world.active_agents.pop(self.idx, None)
 
     def vec_to(self, pos: Vec2D):
-        return self.world.shortest_way(pos, self.pos())
+        return self.world.shortest_way(self.pos(), pos)
 
     def dist(self, pos: Vec2D):
         return self.vec_to(pos).magnitude()

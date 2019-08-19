@@ -67,7 +67,7 @@ class Explorer(Agent):
     group_ids = {2}
     group_collision_ids = {2, 3}
 
-    energy_capacity = 150
+    energy_capacity = 500
 
 
     def initialize(self):
@@ -86,8 +86,8 @@ class Explorer(Agent):
 
             
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
-            print("Explorer " + str(self.idx) + " ran out of energy. Returning to base")
-            self.state == "Returning"
+            print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
+            self.state = "Returning"
 
         if self.state == "Exploring":
             if self.counter < 15 :
@@ -109,7 +109,6 @@ class Explorer(Agent):
             self.destination = world.agents[0].pos()
             self.move_towards(self.destination)
             self.consume_energy(1)
-            print("hello")
             if self.pos() == world.agents[0].pos():
                 print("Explorer reached base. Recharging energy")
                 self.current_energy = self.energy_capacity
@@ -132,6 +131,7 @@ class Transporter(Agent):
 
     memory_capacity = 20
     inventory_capacity = 5
+    energy_capacity = 500
 
     def initialize(self):
         self.color = Colors.RED
@@ -141,14 +141,23 @@ class Transporter(Agent):
         self.ore_in_inventory = []
         self.state = "Searching"
         self.counter = 0
+        self.current_energy = self.energy_capacity
 
         pass
 
+    def consume_energy(self, amount):
+        self.current_energy = self.current_energy - amount
+
     def step(self):
 #####################################################################################
+        if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
+            print("Transporter " + str(self.idx) + " almost out of energy. Returning to base")
+            self.state = "Returning"
+
         if self.state == "Searching":
             if self.counter < 15 :
                 self.move_towards(self.destination)
+                self.consume_energy(1)
             else:
                 self.counter = 0
                 self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
@@ -166,6 +175,7 @@ class Transporter(Agent):
                 if self.current_ore.picked == False:
                     self.destination = Vec2D(self.current_ore.pos().x, self.current_ore.pos().y)
                     self.move_towards(self.destination)
+                    self.consume_energy(1)
                     self.state = "Moving"
                 else: 
                     self.ore_to_pick_up.remove(self.current_ore)
@@ -173,6 +183,7 @@ class Transporter(Agent):
 #####################################################################################
         elif self.state == "Moving":
             self.move_towards(self.destination)
+            self.consume_energy(1)
             if self.pos() == self.destination:
                 #deactive ore and remove from memory
                 self.ore_to_pick_up.remove(self.current_ore)
@@ -180,15 +191,18 @@ class Transporter(Agent):
                     print("Found valid ore. Picking ore from world.")
                     self.current_ore.pickup(self) # Tell the ore that it has been picked up
                     self.ore_in_inventory.append(self.current_ore)
+                    self.consume_energy(1) #Picking an ore costs 1 energy
                 self.state = "Pickup"
 #####################################################################################
         elif self.state == "Returning":
             self.destination = world.agents[0].pos()
             self.move_towards(self.destination)
+            self.consume_energy(1)
             if self.pos() == self.destination :
                 #print("Reached base. Depositing ore and recharging")
                 world.agents[0].deposit(self.ore_in_inventory) # Depositing ore into base
-                self.ore_in_inventory = []# Removing ore from inventory
+                self.ore_in_inventory = []# Removing ore from inventory'
+                self.current_energy = self.energy_capacity
                 self.state = "Searching"
         
         #print("Agent number " + str(self.idx) + " has " + str(len(self.ore_to_pick_up)) + " to pick up")

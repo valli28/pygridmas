@@ -218,7 +218,6 @@ class Transporter(Agent):
             self.move_towards(self.destination)
             self.consume_energy(1)
             if self.pos() == self.destination :
-                #print("Reached base. Depositing ore and recharging")
                 world.agents[self.find_nearest_base()].deposit(self.ore_in_inventory) # Depositing ore into base
                 self.ore_in_inventory = []# Removing ore from inventory'
                 self.current_energy = self.energy_capacity

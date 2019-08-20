@@ -42,7 +42,7 @@ class MyAgent(Agent):
 
     def cleanup(self):
         # Called when removed from the world,
-        # or when 'world.cleanup()' is called.
+        # or when the world ends: world.end()
         pass
 
 
@@ -62,7 +62,7 @@ vis.start()
 
 ### visualization hot keys
 * `space` pause/resume simulation
-* `escape` calls 'world.cleanup()' and terminates the simulation
+* `escape` calls 'world.end()' and terminates the simulation
 * `right arrow` step through simulation
 * `up arrow` increase simulation target speed
 * `down arrow` decrease simulation target speed

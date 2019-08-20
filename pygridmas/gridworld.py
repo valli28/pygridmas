@@ -7,7 +7,7 @@ import math
 
 
 class World:
-    def __init__(self, w, h, torus_enabled=False):
+    def __init__(self, w, h, torus_enabled=False, max_steps=None):
         self.w = w
         self.h = h
         self.m = [[[] for _ in range(w)] for _ in range(h)]
@@ -18,6 +18,8 @@ class World:
         self.agent_pos = {}
         self.agent_counter = itertools.count()
         self.event_emit_queue = []
+        self.ended = False
+        self.max_steps = max_steps
 
     def at(self, pos: Vec2D):
         return self.m[pos.y][pos.x]
@@ -26,10 +28,12 @@ class World:
         return Vec2D(random.randint(0, self.w - 1), random.randint(0, self.h - 1))
 
     def step(self):
+        if self.ended:
+            return
         # call step on all active agents
         # the loop should allow the list to change hence the awkward loop
         for agent_id in list(self.active_agents.keys()):
-            if agent_id in self.agents:
+            if agent_id in self.active_agents:
                 self.agents[agent_id].step()
         # emit events after agent steps
         events = self.event_emit_queue
@@ -39,20 +43,23 @@ class World:
                 if agent.idx in self.agents:
                     agent.receive_event(event_type, data)
         self.time += 1
+        if self.max_steps is not None and self.time >= self.max_steps:
+            self.end()
 
-    def cleanup(self):
-        for agent in self.agents.values():
-            agent.cleanup()
+    def end(self):
+        self.ended = True
+        for agent_id in list(self.agents.keys()):
+            self.remove_agent(agent_id)
 
-    def add_agent(self, agent, pos: Vec2D = None):
+    def add_agent(self, agent, pos: Union[Vec2D, bool] = None):
         idx = agent.idx = next(self.agent_counter)
         if pos is None:
             pos = self.random_pos()
         if pos is not False:
             self.agent_pos[idx] = pos
+            self.at(pos).append(agent)
         self.agents[idx] = agent
         self.active_agents[idx] = agent
-        self.at(pos).append(agent)
         agent.world = self
         agent.initialize()
 
@@ -143,18 +150,19 @@ class World:
             ylo, yhi = cy - d, cy + d
             _xlo, _xhi = max(0, xlo), min(self.w - 1, xhi)
             _ylo, _yhi = max(0, ylo), min(self.h - 1, yhi)
+            if xhi < self.w:
+                for y in reversed(range(_ylo + 1, _yhi)):
+                    agents += m[y][xhi]
             if ylo >= 0:
-                for x in range(_xlo, _xhi + 1):
+                for x in reversed(range(_xlo, _xhi + 1)):
                     agents += m[ylo][x]
-            if yhi < self.h:
-                for x in range(_xlo, _xhi + 1):
-                    agents += m[yhi][x]
             if xlo >= 0:
                 for y in range(_ylo + 1, _yhi):
                     agents += m[y][xlo]
-            if xhi < self.w:
-                for y in range(_ylo + 1, _yhi):
-                    agents += m[y][xhi]
+            if yhi < self.h:
+                for x in range(_xlo, _xhi + 1):
+                    agents += m[yhi][x]
+
         return agents
 
     def box_scan_sorted_torus(self, cx, cy, rng):
@@ -173,16 +181,20 @@ class World:
                 xrange = itertools.chain(range(_xlo, self.w), range(xhi + 1))
             elif xhi != _xhi:
                 xrange = itertools.chain(range(xlo, self.w), range(_xhi + 1))
-            for x in xrange:
-                agents += m[_ylo][x] + m[_yhi][x]
-
             yrange = range(ylo + 1, yhi)
             if ylo != _ylo:
                 yrange = itertools.chain(range(_ylo + 1, self.h), range(yhi))
             elif yhi != _yhi:
                 yrange = itertools.chain(range(ylo + 1, self.h), range(_yhi))
+            for y in reversed(list(yrange)):
+                agents += m[y][_xhi]
+            for x in reversed(list(xrange)):
+                agents += m[_ylo][x]
             for y in yrange:
-                agents += m[y][_xlo] + m[y][_xhi]
+                agents += m[y][_xlo]
+            for x in xrange:
+                agents += m[_yhi][x]
+
         return agents
 
     @staticmethod
@@ -276,7 +288,7 @@ class Agent:
         return self.move_rel(Vec2D(dx, dy))
 
     def move_towards(self, pos: Vec2D):
-        dir = self.world.shortest_way(self.pos(), pos)
+        dir = self.vec_to(pos)
         return self.move_in_dir(dir)
 
     def move_away_from(self, pos: Vec2D):

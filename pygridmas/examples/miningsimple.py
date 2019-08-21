@@ -40,6 +40,7 @@ class Base(Agent):
     def cleanup(self):
         # Called when removed from the world,
         # or when 'world.cleanup()' is called.
+        print("Base " + str(self.idx) + " has recieved " + str(len(self.ore_in_storage)) + " ore in total")
         pass
 
 class Ore(Agent):
@@ -77,7 +78,6 @@ class Explorer(Agent):
     energy_capacity = 1000
 
 
-
     def initialize(self):
         self.color = Colors.GREEN
         self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
@@ -85,14 +85,25 @@ class Explorer(Agent):
         self.current_energy = self.energy_capacity
         self.state = "Exploring"
         self.counter = 0
+        self.bases = []
+
+        for i in range(len(world.agents)):
+            if world.agents[i].group_ids == {0}:
+                self.bases.append(world.agents[i])
+
         pass
+
+    def find_nearest_base(self):
+        distances = []
+        for i in range(len(self.bases)):
+            distances.append(self.dist(self.bases[i].pos()))
+        return distances.index(min(distances))
 
     def consume_energy(self, amount):
         self.current_energy = self.current_energy - amount
     
     def step(self):
-
-            
+#####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
             print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
@@ -115,10 +126,10 @@ class Explorer(Agent):
                 self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
 #####################################################################################
         elif self.state == "Returning":
-            self.destination = world.agents[0].pos()
+            self.destination = world.agents[self.find_nearest_base()].pos()
             self.move_towards(self.destination)
             self.consume_energy(1)
-            if self.pos() == world.agents[0].pos():
+            if self.pos() == self.destination:
                 print("Explorer reached base. Recharging energy")
                 self.current_energy = self.energy_capacity
                 self.state = "Exploring"        
@@ -136,8 +147,6 @@ class Explorer(Agent):
 class Transporter(Agent):
     group_ids = {3}
     group_collision_ids = {2, 3}
-
-
     memory_capacity = 20
     inventory_capacity = 5
     energy_capacity = 1000
@@ -152,17 +161,27 @@ class Transporter(Agent):
         self.counter = 0
         self.current_energy = self.energy_capacity
 
+        self.bases = []
+        for i in range(len(world.agents)):
+            if world.agents[i].group_ids == {0}:
+                self.bases.append(world.agents[i])
+
         pass
 
     def consume_energy(self, amount):
         self.current_energy = self.current_energy - amount
+
+    def find_nearest_base(self):
+        distances = []
+        for i in range(len(self.bases)):
+            distances.append(self.dist(self.bases[i].pos()))
+        return distances.index(min(distances))
 
     def step(self):
 #####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
             print("Transporter " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
-
         if self.state == "Searching":
             if self.counter < 15 :
                 self.move_towards(self.destination)
@@ -173,7 +192,7 @@ class Transporter(Agent):
 #####################################################################################
         elif self.state == "Pickup" :
             if len(self.ore_in_inventory) > self.inventory_capacity:
-                print("Inventory full. Returning to base")
+                print("Inventory full on " + str(self.idx) + ". Returning to base")
                 self.state = "Returning"
             elif len(self.ore_to_pick_up) < 2:
                 print("Ran out of ore to find. Searching for an Explorer")
@@ -204,12 +223,11 @@ class Transporter(Agent):
                 self.state = "Pickup"
 #####################################################################################
         elif self.state == "Returning":
-            self.destination = world.agents[0].pos()
+            self.destination = world.agents[self.find_nearest_base()].pos()
             self.move_towards(self.destination)
             self.consume_energy(1)
             if self.pos() == self.destination :
-                #print("Reached base. Depositing ore and recharging")
-                world.agents[0].deposit(self.ore_in_inventory) # Depositing ore into base
+                world.agents[self.find_nearest_base()].deposit(self.ore_in_inventory) # Depositing ore into base
                 self.ore_in_inventory = []# Removing ore from inventory'
                 self.current_energy = self.energy_capacity #Recharging
                 self.state = "Searching"
@@ -234,18 +252,25 @@ class Transporter(Agent):
     def cleanup(self):
         pass
 
-# Add the agent to the world.
-# If no position is provided, a random position on the map is chosen.
+# Add the agents to the world.
 world.add_agent(Base(), pos=Vec2D(x=50, y=50))
-for i in range(5):
+world.add_agent(Base(), pos=Vec2D(x=150, y=150))
+world.add_agent(Base(), pos=Vec2D(x=150, y=50))
+
+# Dispurse robots equally amongst bases initially
+for i in range(2):
     world.add_agent(Explorer(), pos = world.agents[0].pos())
-for i in range(5):
+    world.add_agent(Explorer(), pos = world.agents[1].pos())
+    world.add_agent(Explorer(), pos = world.agents[2].pos())
+for i in range(2):
     world.add_agent(Transporter(), pos = world.agents[0].pos())
+    world.add_agent(Transporter(), pos = world.agents[1].pos())
+    world.add_agent(Transporter(), pos = world.agents[2].pos())
+
+# Add ore on the map (as agents)
 ore_total = world.w * world.h * 0.01
 for i in range(int(ore_total)):
     world.add_agent(Ore())
-
-
 
 
 # The world proceeds by calling 'world.step()'

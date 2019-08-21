@@ -8,7 +8,8 @@ world = World(w=200, h=200, torus_enabled=True)
 # extend the base Agent class
 class Base(Agent):
     group_ids = {0}
-    #ore_capacity = 400
+    ore_capacity = 50
+
     def initialize(self):
         # Called once when the agent enters a world.
         # After the agent is added to the world, a reference to the
@@ -19,13 +20,11 @@ class Base(Agent):
         pass
 
     def deposit(self, ore):
-        for i in range(len(ore)) :
-           # if self.ore_in_storage < ore_capacity:
+        if len(self.ore_in_storage) < self.ore_capacity:
+            for i in range(len(ore)) :
                 self.ore_in_storage.append(ore[i])
-           # else
-            #    self.emit_event(20, "Base full", world.agents[0].pos()) #Send signal base is full and coordinates to next base
-
-
+        else:
+            self.emit_event(20, "Base full", ore) #Send signal base is full and coordinates to next base
         pass
         
 
@@ -57,7 +56,7 @@ class Ore(Agent):
         self.picked = True
         self.color = Colors.BLACK
         self.current_agent = picking_agent
-        print("Agent " + str(self.current_agent.idx) + " has picked me up")
+        #print("Agent " + str(self.current_agent.idx) + " has picked me up")
         pass
 
     def step(self):
@@ -105,7 +104,7 @@ class Explorer(Agent):
     def step(self):
 #####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
-            print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
+            #print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
 
         if self.state == "Exploring":
@@ -130,7 +129,7 @@ class Explorer(Agent):
             self.move_towards(self.destination)
             self.consume_energy(1)
             if self.pos() == self.destination:
-                print("Explorer reached base. Recharging energy")
+                #print("Explorer reached base. Recharging energy")
                 self.current_energy = self.energy_capacity
                 self.state = "Exploring"        
 
@@ -171,16 +170,27 @@ class Transporter(Agent):
     def consume_energy(self, amount):
         self.current_energy = self.current_energy - amount
 
+    def pick_base(self):
+        distances = []
+        for i in range(len(self.bases)):
+            if not self.pos() == self.bases[i].pos():
+                distances.append(self.dist(self.bases[i].pos()))
+            else:
+                distances.append(1000)
+                print("Base is at minimum distance")
+        return distances.index(min(distances))
+
     def find_nearest_base(self):
         distances = []
         for i in range(len(self.bases)):
             distances.append(self.dist(self.bases[i].pos()))
         return distances.index(min(distances))
 
+
     def step(self):
 #####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
-            print("Transporter " + str(self.idx) + " almost out of energy. Returning to base")
+            #print("Transporter " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
         if self.state == "Searching":
             if self.counter < 15 :
@@ -192,10 +202,11 @@ class Transporter(Agent):
 #####################################################################################
         elif self.state == "Pickup" :
             if len(self.ore_in_inventory) > self.inventory_capacity:
-                print("Inventory full on " + str(self.idx) + ". Returning to base")
+                #print("Inventory full on " + str(self.idx) + ". Returning to base")
+                self.destination = self.bases[self.pick_base()].pos()
                 self.state = "Returning"
             elif len(self.ore_to_pick_up) < 2:
-                print("Ran out of ore to find. Searching for an Explorer")
+                #print("Ran out of ore to find. Searching for an Explorer")
                 self.state = "Searching"
             else:
                 # Picking a new target
@@ -216,18 +227,18 @@ class Transporter(Agent):
                 #deactive ore and remove from memory
                 self.ore_to_pick_up.remove(self.current_ore)
                 if self.current_ore.picked == False:
-                    print("Found valid ore. Picking ore from world.")
+                    #print("Found valid ore. Picking ore from world.")
                     self.current_ore.pickup(self) # Tell the ore that it has been picked up
                     self.ore_in_inventory.append(self.current_ore)
                     self.consume_energy(1) #Picking an ore costs 1 energy
                 self.state = "Pickup"
 #####################################################################################
         elif self.state == "Returning":
-            self.destination = world.agents[self.find_nearest_base()].pos()
+            
             self.move_towards(self.destination)
             self.consume_energy(1)
             if self.pos() == self.destination :
-                world.agents[self.find_nearest_base()].deposit(self.ore_in_inventory) # Depositing ore into base
+                self.bases[self.find_nearest_base()].deposit(self.ore_in_inventory) # Depositing ore into base
                 self.ore_in_inventory = []# Removing ore from inventory'
                 self.current_energy = self.energy_capacity #Recharging
                 self.state = "Searching"
@@ -245,8 +256,10 @@ class Transporter(Agent):
                     if data[i] not in self.ore_to_pick_up:# Make sure there are no duplicates
                         self.ore_to_pick_up.append(data[i]) 
                 self.state = "Pickup" 
-        #if event_type == "Base full": 
-         #   self.state = "Returning"      
+        if event_type == "Base full":
+            print("Base full, going to returning state" + str(len(data)))
+            self.destination = self.bases[self.pick_base()].pos()
+            self.state = "Returning"      
         pass
 
     def cleanup(self):

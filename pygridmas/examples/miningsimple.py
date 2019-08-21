@@ -158,7 +158,7 @@ class Explorer(Agent):
                 self.counter = 0
                 self.state = "Exploring"        
         
-        if self.current_energy == 0:
+        if self.current_energy >= 0:
             print("Agent " + str(self.idx) + " died")
             world.remove_agent(self.idx)
 
@@ -280,7 +280,7 @@ class Transporter(Agent):
 
         self.counter = self.counter + 1
 
-        if self.current_energy == 0:
+        if self.current_energy >= 0:
             print("Agent " + str(self.idx) + " died")
             world.remove_agent(self.idx)
 

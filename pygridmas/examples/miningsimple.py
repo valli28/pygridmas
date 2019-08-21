@@ -13,8 +13,8 @@ N = 3           # Number of bases
 I = int(G/5)    # Communication scope of robots
 P = int(G/20)   # Perception scope of robots
 Q = 1           # Cost of a move-action
-X = 10          # Number of Explorers per base
-Y = 10          # Number of Transporters per base
+X = 10           # Number of Explorers per base
+Y = 10           # Number of Transporters per base
 S = X + Y - 1   # Memory capacity of robots
 W = 5           # Maximum inventory capacity of a Transporter
 
@@ -25,7 +25,7 @@ world = World(w=G, h=G, torus_enabled=True, max_steps=T) # create world, torus o
 
 class Base(Agent):
     group_ids = {0}
-    ore_capacity = 50
+    ore_capacity = C
 
     def initialize(self):
         # Called once when the agent enters a world.
@@ -88,7 +88,7 @@ class Ore(Agent):
 
 class Explorer(Agent):
     group_ids = {2}
-    
+    memory_capacity = S 
     energy_capacity = E
 
     def initialize(self):
@@ -106,7 +106,7 @@ class Explorer(Agent):
         for i in range(len(world.agents)):
             if world.agents[i].group_ids == {0}:
                 self.bases.append(world.agents[i])
-        #self.memory_capacity = self.memory_capacity - len(self.bases)
+        self.memory_capacity = self.memory_capacity - len(self.bases)
 
         pass
 
@@ -121,18 +121,22 @@ class Explorer(Agent):
     
     def step(self):
 #####################################################################################
-        if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
+
+        if self.dist(self.bases[self.find_nearest_base()].pos()) + 10 > self.current_energy:
             #print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
 
         if self.state == "Exploring":
-            self.group_collision_ids = {2, 3}
+            
             if self.counter < 15 :
                 self.move_towards(self.destination)
+                self.group_collision_ids = {2, 3}
                 self.consume_energy(Q)
                 self.counter = self.counter + 1
             else:
                 self.temp_ore = self.box_scan(rng = self.perception_radius, group_id = 1) #Only performs scans when moving
+                while len(self.temp_ore) > self.memory_capacity:
+                    self.temp_ore.pop()
                 self.consume_energy(self.perception_radius) #Consuming energy due to perception radius
                 if self.temp_ore != None:
                     self.emit_event(self.communication_radius, "Pickup request", self.temp_ore)
@@ -151,8 +155,12 @@ class Explorer(Agent):
                 #print("Explorer reached base. Recharging energy")
                 self.current_energy = self.energy_capacity
 
-                
+                self.counter = 0
                 self.state = "Exploring"        
+        
+        if self.current_energy == 0:
+            print("Agent " + str(self.idx) + " died")
+            world.remove_agent(self.idx)
 
         pass
 
@@ -161,7 +169,8 @@ class Explorer(Agent):
         pass
 
     def cleanup(self):
-
+        self.color = Colors.GREY50
+        self.group_collision_ids = set()
         pass
 
 class Transporter(Agent):
@@ -270,6 +279,10 @@ class Transporter(Agent):
         #print("Agent number " + str(self.idx) + " has " + str(len(self.ore_to_pick_up)) + " to pick up")
 
         self.counter = self.counter + 1
+
+        if self.current_energy == 0:
+            print("Agent " + str(self.idx) + " died")
+            world.remove_agent(self.idx)
 
         pass
 

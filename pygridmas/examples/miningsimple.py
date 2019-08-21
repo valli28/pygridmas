@@ -8,6 +8,7 @@ world = World(w=200, h=200, torus_enabled=True)
 # extend the base Agent class
 class Base(Agent):
     group_ids = {0}
+    #ore_capacity = 400
     def initialize(self):
         # Called once when the agent enters a world.
         # After the agent is added to the world, a reference to the
@@ -19,8 +20,14 @@ class Base(Agent):
 
     def deposit(self, ore):
         for i in range(len(ore)) :
-            self.ore_in_storage.append(ore[i])
+           # if self.ore_in_storage < ore_capacity:
+                self.ore_in_storage.append(ore[i])
+           # else
+            #    self.emit_event(20, "Base full", world.agents[0].pos()) #Send signal base is full and coordinates to next base
+
+
         pass
+        
 
     def step(self):
         # Called in 'world.step()' (at every step of the simulation).
@@ -67,7 +74,8 @@ class Explorer(Agent):
     group_ids = {2}
     group_collision_ids = {2, 3}
 
-    energy_capacity = 500
+    energy_capacity = 1000
+
 
 
     def initialize(self):
@@ -90,12 +98,13 @@ class Explorer(Agent):
             self.state = "Returning"
 
         if self.state == "Exploring":
-            if self.counter < 15 :
+            if self.counter < 20 :
                 self.move_towards(self.destination)
                 self.consume_energy(1)
                 self.counter = self.counter + 1
             else:
-                perception_radius = 10
+                energy_capacity_percent = (self.current_energy/self.energy_capacity)
+                perception_radius = int((world.w/20)*energy_capacity_percent) #Perception radius dependent on energy left
                 self.temp_ore = self.box_scan(rng = perception_radius, group_id = 1) #Only performs scans when moving
                 self.consume_energy(perception_radius) #Consuming energy due to perception radius
                 if self.temp_ore != None:
@@ -131,7 +140,7 @@ class Transporter(Agent):
 
     memory_capacity = 20
     inventory_capacity = 5
-    energy_capacity = 500
+    energy_capacity = 1000
 
     def initialize(self):
         self.color = Colors.RED
@@ -202,7 +211,7 @@ class Transporter(Agent):
                 #print("Reached base. Depositing ore and recharging")
                 world.agents[0].deposit(self.ore_in_inventory) # Depositing ore into base
                 self.ore_in_inventory = []# Removing ore from inventory'
-                self.current_energy = self.energy_capacity
+                self.current_energy = self.energy_capacity #Recharging
                 self.state = "Searching"
         
         #print("Agent number " + str(self.idx) + " has " + str(len(self.ore_to_pick_up)) + " to pick up")
@@ -217,7 +226,9 @@ class Transporter(Agent):
                 for i in range(len(data)):
                     if data[i] not in self.ore_to_pick_up:# Make sure there are no duplicates
                         self.ore_to_pick_up.append(data[i]) 
-                self.state = "Pickup"       
+                self.state = "Pickup" 
+        #if event_type == "Base full": 
+         #   self.state = "Returning"      
         pass
 
     def cleanup(self):

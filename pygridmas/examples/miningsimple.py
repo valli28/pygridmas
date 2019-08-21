@@ -1,11 +1,28 @@
 from pygridmas import World, Agent, Vec2D, Colors, Visualizer
 import random
 
-# create world, torus or not
-world = World(w=200, h=200, torus_enabled=True)
+# Setting up the environment
+C = 100         # Base storage capacity
+D = 0.01        # Percentage-wise density of ores on the map
+E = 300         # Energy units of robots.
+G = 200         # Gridsize of map
+M = 1           # Coordination mode (1 = cooperative, 0 = competetive)
+N = 3           # Number of bases
+
+# Setting up the robots
+I = int(G/5)    # Communication scope of robots
+P = int(G/20)   # Perception scope of robots
+Q = 1           # Cost of a move-action
+X = 10          # Number of Explorers per base
+Y = 10          # Number of Transporters per base
+S = X + Y - 1   # Memory capacity of robots
+W = 5           # Maximum inventory capacity of a Transporter
+
+# Setting up simulation
+T = 10000       # Maximum number of cycles
+world = World(w=G, h=G, torus_enabled=True, max_steps=T) # create world, torus or not
 
 
-# extend the base Agent class
 class Base(Agent):
     group_ids = {0}
     def initialize(self):
@@ -50,7 +67,7 @@ class Ore(Agent):
         self.picked = True
         self.color = Colors.BLACK
         self.current_agent = picking_agent
-        print("Agent " + str(self.current_agent.idx) + " has picked me up")
+        #print("Agent " + str(self.current_agent.idx) + " has picked me up")
         pass
 
     def step(self):
@@ -61,16 +78,15 @@ class Ore(Agent):
 
     def cleanup(self):
         self.color = Colors.BLACK
-        
         pass
 
 class Explorer(Agent):
     group_ids = {2}
-    group_collision_ids = {2, 3}
-
-    energy_capacity = 500
+    
+    energy_capacity = E
 
     def initialize(self):
+        self.group_collision_ids = {2, 3}
         self.color = Colors.GREEN
         self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
         self.temp_ore = set()
@@ -78,10 +94,13 @@ class Explorer(Agent):
         self.state = "Exploring"
         self.counter = 0
         self.bases = []
+        self.perception_radius = P
+        self.communication_radius = I
 
         for i in range(len(world.agents)):
             if world.agents[i].group_ids == {0}:
                 self.bases.append(world.agents[i])
+        #self.memory_capacity = self.memory_capacity - len(self.bases)
 
         pass
 
@@ -97,32 +116,36 @@ class Explorer(Agent):
     def step(self):
 #####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
-            print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
+            #print("Explorer " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
 
         if self.state == "Exploring":
+            self.group_collision_ids = {2, 3}
             if self.counter < 15 :
                 self.move_towards(self.destination)
-                self.consume_energy(1)
+                self.consume_energy(Q)
                 self.counter = self.counter + 1
             else:
-                perception_radius = 10
-                self.temp_ore = self.box_scan(rng = perception_radius, group_id = 1) #Only performs scans when moving
-                self.consume_energy(perception_radius) #Consuming energy due to perception radius
+                self.temp_ore = self.box_scan(rng = self.perception_radius, group_id = 1) #Only performs scans when moving
+                self.consume_energy(self.perception_radius) #Consuming energy due to perception radius
                 if self.temp_ore != None:
-                    self.emit_event(20, "Pickup request", self.temp_ore)
+                    self.emit_event(self.communication_radius, "Pickup request", self.temp_ore)
                     self.consume_energy(1) # Consume energy due to communication
                 # Reset the counter and make a new destination
                 self.counter = 0
                 self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
 #####################################################################################
         elif self.state == "Returning":
+
             self.destination = world.agents[self.find_nearest_base()].pos()
             self.move_towards(self.destination)
-            self.consume_energy(1)
+            self.consume_energy(Q)
             if self.pos() == self.destination:
-                print("Explorer reached base. Recharging energy")
+                self.group_collision_ids = set()
+                #print("Explorer reached base. Recharging energy")
                 self.current_energy = self.energy_capacity
+
+                
                 self.state = "Exploring"        
 
         pass
@@ -137,12 +160,13 @@ class Explorer(Agent):
 
 class Transporter(Agent):
     group_ids = {3}
-    group_collision_ids = {2, 3}
-    memory_capacity = 20
-    inventory_capacity = 5
-    energy_capacity = 500
+
+    memory_capacity = S 
+    inventory_capacity = W
+    energy_capacity = E
 
     def initialize(self):
+        self.group_collision_ids = {2, 3}
         self.color = Colors.RED
         self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
         self.current_ore = []
@@ -156,11 +180,12 @@ class Transporter(Agent):
         for i in range(len(world.agents)):
             if world.agents[i].group_ids == {0}:
                 self.bases.append(world.agents[i])
-
+        self.memory_capacity = self.memory_capacity - len(self.bases)
         pass
 
     def consume_energy(self, amount):
         self.current_energy = self.current_energy - amount
+        pass
 
     def find_nearest_base(self):
         distances = []
@@ -171,22 +196,23 @@ class Transporter(Agent):
     def step(self):
 #####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:
-            print("Transporter " + str(self.idx) + " almost out of energy. Returning to base")
+            #print("Transporter " + str(self.idx) + " almost out of energy. Returning to base")
             self.state = "Returning"
         if self.state == "Searching":
+            self.group_collision_ids = {2, 3}
             if self.counter < 15 :
                 self.move_towards(self.destination)
-                self.consume_energy(1)
+                self.consume_energy(Q)
             else:
                 self.counter = 0
                 self.destination = Vec2D(random.randint(0,world.h), random.randint(0,world.h))
 #####################################################################################
         elif self.state == "Pickup" :
             if len(self.ore_in_inventory) > self.inventory_capacity:
-                print("Inventory full on " + str(self.idx) + ". Returning to base")
+                #print("Inventory full on " + str(self.idx) + ". Returning to base")
                 self.state = "Returning"
             elif len(self.ore_to_pick_up) < 2:
-                print("Ran out of ore to find. Searching for an Explorer")
+                #print("Ran out of ore to find. Searching for an Explorer")
                 self.state = "Searching"
             else:
                 # Picking a new target
@@ -194,7 +220,7 @@ class Transporter(Agent):
                 if self.current_ore.picked == False:
                     self.destination = Vec2D(self.current_ore.pos().x, self.current_ore.pos().y)
                     self.move_towards(self.destination)
-                    self.consume_energy(1)
+                    self.consume_energy(Q)
                     self.state = "Moving"
                 else: 
                     self.ore_to_pick_up.remove(self.current_ore)
@@ -202,12 +228,12 @@ class Transporter(Agent):
 #####################################################################################
         elif self.state == "Moving":
             self.move_towards(self.destination)
-            self.consume_energy(1)
+            self.consume_energy(Q)
             if self.pos() == self.destination:
                 #deactive ore and remove from memory
                 self.ore_to_pick_up.remove(self.current_ore)
                 if self.current_ore.picked == False:
-                    print("Found valid ore. Picking ore from world.")
+                    #print("Found valid ore. Picking ore from world.")
                     self.current_ore.pickup(self) # Tell the ore that it has been picked up
                     self.ore_in_inventory.append(self.current_ore)
                     self.consume_energy(1) #Picking an ore costs 1 energy
@@ -216,11 +242,13 @@ class Transporter(Agent):
         elif self.state == "Returning":
             self.destination = world.agents[self.find_nearest_base()].pos()
             self.move_towards(self.destination)
-            self.consume_energy(1)
+            self.consume_energy(Q)
             if self.pos() == self.destination :
+                self.group_collision_ids = set() # Remove all collision_ids from this bot
                 world.agents[self.find_nearest_base()].deposit(self.ore_in_inventory) # Depositing ore into base
                 self.ore_in_inventory = []# Removing ore from inventory'
                 self.current_energy = self.energy_capacity
+                
                 self.state = "Searching"
         
         #print("Agent number " + str(self.idx) + " has " + str(len(self.ore_to_pick_up)) + " to pick up")
@@ -242,25 +270,23 @@ class Transporter(Agent):
         pass
 
 # Add the agents to the world.
-world.add_agent(Base(), pos=Vec2D(x=50, y=50))
-world.add_agent(Base(), pos=Vec2D(x=150, y=150))
-world.add_agent(Base(), pos=Vec2D(x=150, y=50))
+for i in range(N):
+    world.add_agent(Base(), pos = Vec2D(random.randint(0,world.h), random.randint(0,world.h)))
+
 
 # Dispurse robots equally amongst bases initially
-for i in range(2):
-    world.add_agent(Explorer(), pos = world.agents[0].pos())
-    world.add_agent(Explorer(), pos = world.agents[1].pos())
-    world.add_agent(Explorer(), pos = world.agents[2].pos())
-for i in range(2):
-    world.add_agent(Transporter(), pos = world.agents[0].pos())
-    world.add_agent(Transporter(), pos = world.agents[1].pos())
-    world.add_agent(Transporter(), pos = world.agents[2].pos())
+for i in range(X):
+    for j in range(N):
+        world.add_agent(Explorer(), pos = world.agents[j].pos())
+
+for i in range(Y):
+    for j in range(N):
+        world.add_agent(Transporter(), pos = world.agents[j].pos())
 
 # Add ore on the map (as agents)
-ore_total = world.w * world.h * 0.01
+ore_total = world.w * world.h * D # The density of ores is multiplied with the mapsize to make the correct amount of ore
 for i in range(int(ore_total)):
     world.add_agent(Ore())
-
 
 # The world proceeds by calling 'world.step()'
 world.step()

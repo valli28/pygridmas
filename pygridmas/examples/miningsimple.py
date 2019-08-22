@@ -218,7 +218,6 @@ class Transporter(Agent):
             distances.append(self.dist(self.bases[i].pos()))
         return distances.index(min(distances))
 
-
     def step(self):
 #####################################################################################
         if self.dist(world.agents[0].pos()) + 10 > self.current_energy:

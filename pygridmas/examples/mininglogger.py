@@ -59,7 +59,7 @@ def draw_sample(T):
         explorer_counts.append(explorer_logger.count)
         transporter_counts.append(transporter_logger.count)
         base_counts.append(base_logger.count)
-        ore_counts.append(ore_logger.count)
+        ore_counts.append(ore_total - ore_logger.count)
         world.step()
         #vis = Visualizer(world, target_speed=25)
         #vis.start()
@@ -70,10 +70,18 @@ def draw_sample(T):
 
 def main():
     T = mining.T
-    n = 10
+    t = list(range(T))
+    n = 50
+
+#########################################################
+# Test 3 and 3
+    print("Test with 3 and 3")
+    mining.X = mining.Y = 3
+
     data1 = np.empty((n, T))
     data2 = np.empty((n, T))
     data3 = np.empty((n, T))
+    
     for i in range(n):
         print(i)
         [data1[i], data2[i], data3[i]] = draw_sample(T)
@@ -85,28 +93,151 @@ def main():
     mean3 = data3.mean(axis=0)
     std3 = data3.std(axis=0)
 
-    t = list(range(T))
     f = plt.figure(1)
-    plt.plot(t, mean1, 'k', label='mean')
-    plt.fill_between(t, mean1 - std1, mean1 + std1, label='+- 1 std')
-    plt.xlabel('time')
-    plt.ylabel('number of agents')
+    plt.plot(t, mean1, 'k', label='$\mu$')
+    plt.fill_between(t, mean1 - std1, mean1 + std1, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Explorers')
     plt.legend()
     
     g = plt.figure(2)
-    plt.plot(t, mean2, 'k', label='mean')
-    plt.fill_between(t, mean2 - std2, mean2 + std2, label='+- 1 std')
-    plt.xlabel('time')
-    plt.ylabel('number of agents')
+    plt.plot(t, mean2, 'k', label='$\mu$')
+    plt.fill_between(t, mean2 - std2, mean2 + std2, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Transporters')
     plt.legend()
     
     h = plt.figure(3)
-    plt.plot(t, mean3, 'k', label='mean')
-    plt.fill_between(t, mean3 - std3, mean3 + std3, label='+- 1 std')
-    plt.xlabel('time')
-    plt.ylabel('number of agents')
+    plt.plot(t, mean3, 'k', label='$\mu$')
+    plt.fill_between(t, mean3 - std3, mean3 + std3, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Ores collected')
     plt.legend()
 
+#########################################################
+# Test 5 and 5 
+    print("Test with 5 and 5")
+    mining.X = mining.Y = 5
+
+    data1 = np.empty((n, T))
+    data2 = np.empty((n, T))
+    data3 = np.empty((n, T))
+    
+    for i in range(n):
+        print(i)
+        [data1[i], data2[i], data3[i]] = draw_sample(T)
+
+    mean1 = data1.mean(axis=0)
+    std1 = data1.std(axis=0)
+    mean2 = data2.mean(axis=0)
+    std2 = data2.std(axis=0)
+    mean3 = data3.mean(axis=0)
+    std3 = data3.std(axis=0)
+
+    f = plt.figure(1)
+    plt.plot(t, mean1, 'k', label='$\mu$')
+    plt.fill_between(t, mean1 - std1, mean1 + std1, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Explorers')
+    plt.legend()
+    
+    g = plt.figure(2)
+    plt.plot(t, mean2, 'k', label='$\mu$')
+    plt.fill_between(t, mean2 - std2, mean2 + std2, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Transporters')
+    plt.legend()
+    
+    h = plt.figure(3)
+    plt.plot(t, mean3, 'k', label='$\mu$')
+    plt.fill_between(t, mean3 - std3, mean3 + std3, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Ores collected')
+    plt.legend()
+
+#########################################################
+# Test 7 and 7
+    print("Test with 7 and 7")
+    mining.X = mining.Y = 7
+
+    data1 = np.empty((n, T))
+    data2 = np.empty((n, T))
+    data3 = np.empty((n, T))
+    
+    for i in range(n):
+        print(i)
+        [data1[i], data2[i], data3[i]] = draw_sample(T)
+
+    mean1 = data1.mean(axis=0)
+    std1 = data1.std(axis=0)
+    mean2 = data2.mean(axis=0)
+    std2 = data2.std(axis=0)
+    mean3 = data3.mean(axis=0)
+    std3 = data3.std(axis=0)
+
+    f = plt.figure(1)
+    plt.plot(t, mean1, 'k', label='$\mu$')
+    plt.fill_between(t, mean1 - std1, mean1 + std1, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Explorers')
+    plt.legend()
+    
+    g = plt.figure(2)
+    plt.plot(t, mean2, 'k', label='$\mu$')
+    plt.fill_between(t, mean2 - std2, mean2 + std2, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Transporters')
+    plt.legend()
+    
+    h = plt.figure(3)
+    plt.plot(t, mean3, 'k', label='$\mu$')
+    plt.fill_between(t, mean3 - std3, mean3 + std3, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Ores collected')
+    plt.legend()
+
+#########################################################
+# Test 10 and 10
+    print("Test with 10 and 10")
+    mining.X = mining.Y = 10
+
+    data1 = np.empty((n, T))
+    data2 = np.empty((n, T))
+    data3 = np.empty((n, T))
+    
+    for i in range(n):
+        print(i)
+        [data1[i], data2[i], data3[i]] = draw_sample(T)
+
+    mean1 = data1.mean(axis=0)
+    std1 = data1.std(axis=0)
+    mean2 = data2.mean(axis=0)
+    std2 = data2.std(axis=0)
+    mean3 = data3.mean(axis=0)
+    std3 = data3.std(axis=0)
+
+    f = plt.figure(1)
+    plt.plot(t, mean1, 'k', label='$\mu$')
+    plt.fill_between(t, mean1 - std1, mean1 + std1, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Explorers')
+    plt.legend()
+    
+    g = plt.figure(2)
+    plt.plot(t, mean2, 'k', label='$\mu$')
+    plt.fill_between(t, mean2 - std2, mean2 + std2, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Transporters')
+    plt.legend()
+    
+    h = plt.figure(3)
+    plt.plot(t, mean3, 'k', label='$\mu$')
+    plt.fill_between(t, mean3 - std3, mean3 + std3, label='+- 1' + '$\sigma$')
+    plt.xlabel('Time')
+    plt.ylabel('Number of Ores collected')
+    plt.legend()
+
+    # Hopefully show 3 graphs with stuff in them
     plt.show()
 
 

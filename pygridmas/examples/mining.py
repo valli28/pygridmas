@@ -13,8 +13,8 @@ N = 1           # Number of bases
 I = int(G/5)    # Communication scope of robots
 P = int(G/20)   # Perception scope of robots
 Q = 1           # Cost of a move-action
-X = 5           # Number of Explorers per base
-Y = 5           # Number of Transporters per base
+X = 3           # Number of Explorers per base
+Y = 3           # Number of Transporters per base
 S = X + Y - 1   # Memory capacity of robots
 W = 5           # Maximum inventory capacity of a Transporter
 
@@ -328,8 +328,9 @@ class Transporter(Agent):
                     #if self.ore_to_pick_up != []:
                     #    self.destination = self.ore_to_pick_up[0].pos()
                     #else:
+                    # This is not very smart... 
                     self.destination = Vec2D(random.randint(0,self.world.h), random.randint(0,self.world.h))
-                    self.state = "Searching"
+                    self.state = "Pickup"
     #####################################################################################
             
             self.counter = self.counter + 1

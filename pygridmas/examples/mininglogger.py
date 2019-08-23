@@ -24,7 +24,7 @@ class AgentCountLogger:
 
 def draw_sample(T):
     #world = World(200, 200, max_steps=T)
-    world = World(100, 100, max_steps=T)
+    world = World(w=mining.G, h=mining.G, torus_enabled=True, max_steps=T)
     # Add the agents to the world.
     base_logger = AgentCountLogger()
     BaseLog = base_logger.bind(mining.Base)
@@ -61,27 +61,52 @@ def draw_sample(T):
         base_counts.append(base_logger.count)
         ore_counts.append(ore_logger.count)
         world.step()
+        #vis = Visualizer(world, target_speed=25)
+        #vis.start()
 
 
-    return ore_counts # [explorer_counts, transporter_counts, base_counts]
+    return [explorer_counts, transporter_counts, ore_counts] # [explorer_counts, transporter_counts, base_counts]
 
 
 def main():
     T = mining.T
     n = 10
-    data = np.empty((n, T))
+    data1 = np.empty((n, T))
+    data2 = np.empty((n, T))
+    data3 = np.empty((n, T))
     for i in range(n):
         print(i)
-        data[i] = draw_sample(T)
-    mean = data.mean(axis=0)
-    std = data.std(axis=0)
+        [data1[i], data2[i], data3[i]] = draw_sample(T)
+
+    mean1 = data1.mean(axis=0)
+    std1 = data1.std(axis=0)
+    mean2 = data2.mean(axis=0)
+    std2 = data2.std(axis=0)
+    mean3 = data3.mean(axis=0)
+    std3 = data3.std(axis=0)
 
     t = list(range(T))
-    plt.plot(t, mean, 'k', label='mean')
-    plt.fill_between(t, mean - std, mean + std, label='+- 1 std')
+    f = plt.figure(1)
+    plt.plot(t, mean1, 'k', label='mean')
+    plt.fill_between(t, mean1 - std1, mean1 + std1, label='+- 1 std')
     plt.xlabel('time')
     plt.ylabel('number of agents')
     plt.legend()
+    
+    g = plt.figure(2)
+    plt.plot(t, mean2, 'k', label='mean')
+    plt.fill_between(t, mean2 - std2, mean2 + std2, label='+- 1 std')
+    plt.xlabel('time')
+    plt.ylabel('number of agents')
+    plt.legend()
+    
+    h = plt.figure(3)
+    plt.plot(t, mean3, 'k', label='mean')
+    plt.fill_between(t, mean3 - std3, mean3 + std3, label='+- 1 std')
+    plt.xlabel('time')
+    plt.ylabel('number of agents')
+    plt.legend()
+
     plt.show()
 
 

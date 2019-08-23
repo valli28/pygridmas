@@ -26,6 +26,7 @@ class Base(Agent):
     group_ids = {0}
     ore_capacity = C
     end_the_world = False
+    ore_counter = 0
 
     def initialize(self):
         # Called once when the agent enters a world.
@@ -33,6 +34,7 @@ class Base(Agent):
         # world is stored in 'self.world'.
         self.color = Colors.YELLOW
         self.ore_in_storage = []
+        self.ore_counter = 0
         
         pass
 
@@ -40,9 +42,13 @@ class Base(Agent):
         if len(self.ore_in_storage) < self.ore_capacity:
             for i in range(len(ore)) :
                 self.ore_in_storage.append(ore[i])
+                self.ore_counter += 1
+                if ore[i].idx in self.world.active_agents: 
+                    self.world.remove_agent(ore[i].idx)
         else:
             #self.emit_event(2, "Base full", ore) #Send signal base is full and coordinates to next base
             self.end_the_world = True
+        
 
         pass
         
@@ -76,6 +82,7 @@ class Ore(Agent):
         self.picked = True
         self.color = Colors.BLACK
         self.current_agent = picking_agent
+        
         pass
 
     def step(self):
@@ -274,9 +281,6 @@ class Transporter(Agent):
                     self.destination = Vec2D(random.randint(0,self.world.h), random.randint(0,self.world.h))
     #####################################################################################
             elif self.state == "Pickup" :
-                #print("heh")
-                #print(len(self.ore_in_inventory))
-                #print(len(self.ore_to_pick_up))
                 if len(self.ore_in_inventory) >= self.inventory_capacity: # Inventory full
                     self.destination = self.bases[self.find_nearest_base()].pos()
                     self.state = "Returning"
@@ -285,7 +289,7 @@ class Transporter(Agent):
                 else:
                     # Picking a new target
                     self.current_ore = self.ore_to_pick_up[0] #random.randint(0, len(self.ore_to_pick_up)-1)
-                    if self.current_ore.picked == False:
+                    if self.current_ore.idx in self.world.active_agents: #if self.current_ore.picked == False:
                         self.destination = self.current_ore.pos()
                         self.move_towards(self.destination)
                         self.consume_energy(Q)
@@ -300,7 +304,7 @@ class Transporter(Agent):
                 if self.pos() == self.destination:
                     #deactive ore and remove from memory
                     self.ore_to_pick_up.remove(self.current_ore)
-                    if self.current_ore.picked == False:
+                    if self.current_ore.idx in self.world.active_agents: #if self.current_ore.picked == False:
                         self.current_ore.pickup(self) # Tell the ore that it has been picked up
                         self.ore_in_inventory.append(self.current_ore)
                         self.consume_energy(1) #Picking an ore costs 1 energy
@@ -321,10 +325,10 @@ class Transporter(Agent):
                     self.bases[self.find_nearest_base()].deposit(self.ore_in_inventory) # Depositing ore into base
                     self.ore_in_inventory = []# Removing ore from inventory'
                     self.current_energy = self.energy_capacity #Recharging
-                    if self.ore_to_pick_up != []:
-                        self.destination = self.ore_to_pick_up[0].pos()
-                    else:
-                        self.destination = Vec2D(random.randint(0,self.world.h), random.randint(0,self.world.h))
+                    #if self.ore_to_pick_up != []:
+                    #    self.destination = self.ore_to_pick_up[0].pos()
+                    #else:
+                    self.destination = Vec2D(random.randint(0,self.world.h), random.randint(0,self.world.h))
                     self.state = "Searching"
     #####################################################################################
             
